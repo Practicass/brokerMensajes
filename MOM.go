@@ -1,9 +1,9 @@
 package main
 
 import (
-	"sync"
 	"fmt"
-
+	"sync"
+	"time"
 )
 
 
@@ -54,12 +54,15 @@ func (l *Broker) Publicar(nombre string, mensaje string){
 
 func (l *Broker) Consumir(nombre string, callback func(string)){
 	if _, ok := l.colas[nombre]; ok {
-		// for true {
+		for true {
+			
 			mensaje := <- l.colas[nombre].mensajes
 			// fmt.Println("Consumiendo")
 			callback(mensaje)
+
+			time.Sleep(1000*time.Millisecond)
 			
-		// }
+		}
 	}
 }
 
