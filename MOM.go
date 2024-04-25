@@ -2,6 +2,7 @@ package main
 
 import (
 	"sync"
+	"fmt"
 
 )
 
@@ -22,12 +23,21 @@ type Broker struct {
     consumidores map[string][]string
 }
 
-func (l *Broker) declarar_cola(nombre string ){
+func  NuevoBroker() *Broker {
+	// fmt.Println("Broker")
+	return &Broker{
+		colas : make(map[string]Cola),
+		consumidores : make(map[string][]string),
+
+	}
+	
+}
+
+func (l *Broker) Declarar_cola(nombre string ){
 	if(l.colas == nil){
 		l.colas = make(map[string]Cola)
 
 	}
-	
 	if _, ok := l.colas[nombre]; !ok {
 		l.colas[nombre] = Cola{make(chan string),sync.Mutex{}}
 		l.consumidores[nombre] = []string{}
@@ -35,31 +45,24 @@ func (l *Broker) declarar_cola(nombre string ){
 	
 }
 
-func (l *Broker) publicar(nombre string, mensaje string){
+func (l *Broker) Publicar(nombre string, mensaje string){
 	if _, ok := l.colas[nombre]; ok {
+		fmt.Println("Publicando", nombre," ", mensaje)
 		l.colas[nombre].mensajes <- mensaje
 	}
 }
 
-func (l *Broker) consumir(nombre string, respuesta []string){
-
+func (l *Broker) Consumir(nombre string, callback func(string)){
 	if _, ok := l.colas[nombre]; ok {
-		// i = 0
-		for true {
-			mensaje := <- l.colas[nombre]
-			respuesta.append(mensaje)
-
-		}
+		// for true {
+			mensaje := <- l.colas[nombre].mensajes
+			// fmt.Println("Consumiendo")
+			callback(mensaje)
+			
+		// }
 	}
 }
 
 
 
 
-func main() {
-
-	// miListaColas := ListaColas{
-	// 	colas: list.New(),
-	// }
-
-}

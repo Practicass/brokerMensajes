@@ -1,5 +1,0 @@
-package consumidor
-
-func main(){
-	
-}

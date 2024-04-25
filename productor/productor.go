@@ -1,5 +1,0 @@
-package productor
-
-func main(){
-	
-}
