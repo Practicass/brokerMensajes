@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 	"net/rpc"
+	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -43,6 +45,7 @@ type ArgsDeclararCola struct{
 type ArgsPublicar struct{
 	Nombre string
 	Mensaje string
+	Durability bool
 }
 
 // ArgsConsumir representa los argumentos para consumir mensajes de una cola.
@@ -131,10 +134,51 @@ func (l *Broker) Publicar(args *ArgsPublicar, reply *Reply) error{
 	if _, ok := l.colas[args.Nombre]; ok {
 		fmt.Println("Publicando", args.Nombre," ", args.Mensaje)
 		l.colas[args.Nombre].mensajes <- args.Mensaje
+		if(args.Durability){
+            // Abre el archivo con el nombre args.Nombre.txtx en modo append.
+            file, err := os.OpenFile(args.Nombre+".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+            if err != nil {
+                fmt.Println("Error al abrir el archivo:", err)
+                return err
+            }
+            defer file.Close()
 
+            // Escribe args.Mensaje en el archivo.
+            if _, err := file.WriteString(args.Mensaje); err != nil {
+                fmt.Println("Error al escribir en el archivo:", err)
+                return err
+            }
+			
+		}
 		go l.mensajeCaducado(args.Nombre)
 	}
 	return nil
+}
+
+
+func eliminarPrimeraLinea(nombreArchivo string) error {
+    // Lee todas las líneas del archivo.
+    lineas, err := os.ReadFile(nombreArchivo)
+    if err != nil {
+        return err
+    }
+
+    // Convierte las líneas a una slice de strings.
+    todasLasLineas := strings.Split(string(lineas), "\n")
+
+    // Elimina la primera línea.
+    lineasRestantes := todasLasLineas[1:]
+
+    // Convierte las líneas restantes a una cadena.
+    nuevoContenido := strings.Join(lineasRestantes, "\n")
+
+    // Escribe las líneas restantes de nuevo en el archivo.
+    err = os.WriteFile(nombreArchivo, []byte(nuevoContenido), 0644)
+    if err != nil {
+        return err
+    }
+
+    return nil
 }
 
 
@@ -169,6 +213,7 @@ func (l *Broker) Leer(nombre string, client *rpc.Client){
 		}else{
 			l.mensajeRechazado <- "ok"
 			l.mensajeConsumido <- true
+			eliminarPrimeraLinea(nombre+".txt")
 		}
 		time.Sleep(1000*time.Millisecond)
 	}

@@ -6,8 +6,10 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"os"
 	"net/rpc"
+	"os"
+	"strconv"
+	"strings"
 )
 
 // Productor representa a un productor de mensajes que interactúa con un Broker de mensajes.
@@ -49,6 +51,7 @@ type ArgsDeclararCola struct{
 type ArgsPublicar struct{
 	Nombre string
 	Mensaje string
+	Durability bool
 }
 
 
@@ -63,7 +66,7 @@ type Reply struct{
 // Parámetros:
 // - nombreCola: El nombre de la cola en la que se desea publicar el mensaje.
 // - mensaje: El mensaje que se desea publicar en la cola.
-func (p *Productor) Publicar(nombreCola string, mensaje string){
+func (p *Productor) Publicar(nombreCola string, mensaje string, durability bool){
 	// fmt.Println("Escribiendo")
 	// p.broker.Declarar_cola(nombreCola)
 	// p.broker.Publicar(nombreCola, mensaje)
@@ -74,7 +77,7 @@ func (p *Productor) Publicar(nombreCola string, mensaje string){
         fmt.Println("Error al llamar al método Multiply:", err)
         return
     }
-	args2 := &ArgsPublicar{Nombre: nombreCola, Mensaje: mensaje}
+	args2 := &ArgsPublicar{Nombre: nombreCola, Mensaje: mensaje, Durability: durability}
     err = p.broker.Call("Broker.Publicar", args2, &reply)
 	if err != nil {
         fmt.Println("Error al llamar al método Multiply:", err)
@@ -131,8 +134,20 @@ func main(){
             fmt.Println("Error al leer la entrada:", err)
             continue
         }
+		fmt.Print("¿Desea que el mensaje sea durable? (true/false):")
+        // Leer una línea de entrada
+        input3, err := reader.ReadString('\n')
+        if err != nil {
+            fmt.Println("Error al leer la entrada:", err)
+            continue
+        }
 		
+		durable, err := strconv.ParseBool(strings.TrimSpace(input3))
+		if err != nil {
+			fmt.Println("Error al convertir el valor a booleano:", err)
+			continue
+		}
 
-		go productor.Publicar(input1,input2)
+		go productor.Publicar(input1,input2,durable)
 	}
 }
