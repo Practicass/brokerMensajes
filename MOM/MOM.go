@@ -53,6 +53,7 @@ type ArgsPublicar struct{
 type ArgsConsumir struct{
 	Nombre string
 	Callback func(*ArgsCallback, *Reply) error
+	Ip string
 }
 
 // Reply representa la respuesta de una llamada RPC.
@@ -108,7 +109,7 @@ func (l *Broker) Declarar_cola(args *ArgsDeclararCola, reply *Reply) error{
 }
 
 func (l *Broker) mensajeCaducado( nombre string){
-	timer := time.NewTimer(100 * time.Second)
+	timer := time.NewTimer(5000 * time.Second)
     
 	select {	
 	case <-timer.C:
@@ -231,7 +232,7 @@ func (l *Broker) Leer(nombre string, client *rpc.Client){
 // - Un valor de tipo `error` que es `nil` si la operación es exitosa, o un error si ocurre un problema.
 func (l *Broker) Consumir(args *ArgsConsumir, reply *Reply) error{
 	if _, ok := l.colas[args.Nombre]; ok {
-		client, err := rpc.Dial("tcp", "127.0.0.1:8081")
+		client, err := rpc.Dial("tcp", args.Ip)
 		if err != nil {
 			fmt.Println("Dialing:", err)
 		}
@@ -249,17 +250,26 @@ func (l *Broker) Consumir(args *ArgsConsumir, reply *Reply) error{
 // Crea una instancia de `Broker`, la registra en RPC y comienza a escuchar en el puerto 8080.
 func main(){
 
+	args := os.Args
+
+	//Verifica número correcto de argumentos
+	if len(args) < 2 {
+        fmt.Println("No se ha proporcionado ningún argumento. Ejemplo de uso:")
+        fmt.Println("  go run MOM direccionIP:puerto")
+        return
+    }
+
 	l := NuevoBroker()
 	rpc.Register(l)
 
-	ln, err := net.Listen("tcp", "127.0.0.1:8080")
+	ln, err := net.Listen("tcp", args[1])
     if err != nil {
         fmt.Println("Error al iniciar el servidor:", err)
         return
     }
     defer ln.Close()
 
-    fmt.Println("Servidor escuchando en el puerto 8080")
+    fmt.Println("Servidor escuchando en otro  puerto")
 
 	for{
 		// Aceptar conexiones entrantes

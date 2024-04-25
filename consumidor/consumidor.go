@@ -48,12 +48,13 @@ type ArgsDeclararCola struct{
 type ArgsConsumir struct{
 	Nombre string
 	Callback func(*ArgsCallback, *Reply) error
+	Ip string
 }
 type Reply struct{
 	Mensaje string
 }
 
-func (c *Consumidor) Leer (nombreCola string) {
+func (c *Consumidor) Leer (nombreCola string, ip string) {
 	// fmt.Println("Consumidor " + c.nombre + " leyendo")
 	// c.broker.Declarar_cola(nombreCola)
 	// c.broker.Consumir(nombreCola, c.Callback)
@@ -64,7 +65,7 @@ func (c *Consumidor) Leer (nombreCola string) {
         fmt.Println("Error al llamar al método Multiply:", err)
         return
     }
-	args2 := &ArgsConsumir{Nombre: nombreCola, Callback: c.Callback}
+	args2 := &ArgsConsumir{Nombre: nombreCola, Callback: c.Callback, Ip: ip}
     err = c.broker.Call("Broker.Consumir", args2, &reply)
 	if err != nil {
         fmt.Println("Error al llamar al método Multiply:", err)
@@ -79,12 +80,12 @@ func main(){
 	args := os.Args
 
 
-	if len(args) < 2 {
+	if len(args) < 4 {
         fmt.Println("No se ha proporcionado ningún argumento. Ejemplo de uso:")
-        fmt.Println("  go run productor nombreConsumidor")
+        fmt.Println("  go run productor nombreConsumidor direccionIPBroker:puerto direccionIP:puerto")
         return
     }
-	broker, err := rpc.Dial("tcp", "127.0.0.1:8080")
+	broker, err := rpc.Dial("tcp", args[2])
     if err != nil {
         fmt.Println("Error al conectar al servidor:", err)
     }
@@ -95,7 +96,7 @@ func main(){
 	rpc.Register(consumidor1)
 
 
-	listener, err := net.Listen("tcp", "127.0.0.1:8081")
+	listener, err := net.Listen("tcp", args[3])
 	if err != nil {
 		fmt.Println("ListenTCP error:", err)
 	}
@@ -115,7 +116,7 @@ func main(){
             fmt.Println("Error al leer la entrada:", err)
 			continue
         }
-		consumidor1.Leer(input)
+		consumidor1.Leer(input, args[3])
 
 	}
 	

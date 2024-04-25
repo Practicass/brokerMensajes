@@ -100,16 +100,17 @@ func main(){
 	args := os.Args
 
 	//Verifica número correcto de argumentos
-	if len(args) < 2 {
+	if len(args) < 3 {
         fmt.Println("No se ha proporcionado ningún argumento. Ejemplo de uso:")
-        fmt.Println("  go run productor nombreProductor")
+        fmt.Println("  go run productor nombreProductor direccionIP:puerto")
         return
     }
 
 	//Realizar conexión
-	broker, err := rpc.Dial("tcp", "127.0.0.1:8080")
+	broker, err := rpc.Dial("tcp", args[2])
     if err != nil {
         fmt.Println("Error al conectar al servidor:", err)
+		return 
     }
     defer broker.Close()
 
