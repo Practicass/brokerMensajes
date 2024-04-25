@@ -12,7 +12,7 @@ import (
 // Tiene un canal de mensajes (`mensajes`) y un mutex (`mux`) para sincronización.
 type Cola struct {
 	mensajes chan string
-	mux sync.Mutex
+	mux *sync.Mutex
 }
 
 //Estructura que representa el broker.
@@ -26,6 +26,9 @@ type Broker struct {
     consumidores map[string][]string
 
 	mensajeConsumido chan bool
+
+	mensajeRechazado chan string
+
 }
 
 
@@ -71,7 +74,7 @@ func NuevoBroker() *Broker {
 		colas : make(map[string]Cola),
 		consumidores : make(map[string][]string),
 		mensajeConsumido: make(chan bool),
-
+		mensajeRechazado: make(chan string, 1),
 	}
 	
 }
@@ -89,11 +92,13 @@ func NuevoBroker() *Broker {
 func (l *Broker) Declarar_cola(args *ArgsDeclararCola, reply *Reply) error{
 	if(l.colas == nil){
 		l.colas = make(map[string]Cola)
-		
 	}
 	if _, ok := l.colas[args.Nombre]; !ok {
-		l.colas[args.Nombre] = Cola{make(chan string),sync.Mutex{}}
+		l.colas[args.Nombre] = Cola{make(chan string, 10), &sync.Mutex{}}
 		l.consumidores[args.Nombre] = []string{}
+		fmt.Println("Cola declarada")
+		l.mensajeRechazado <- "ok"
+
 	}
 	return nil
 	
@@ -126,10 +131,8 @@ func (l *Broker) Publicar(args *ArgsPublicar, reply *Reply) error{
 	if _, ok := l.colas[args.Nombre]; ok {
 		fmt.Println("Publicando", args.Nombre," ", args.Mensaje)
 		l.colas[args.Nombre].mensajes <- args.Mensaje
-		fmt.Println("Mensaje publicado")
 
 		go l.mensajeCaducado(args.Nombre)
-		fmt.Println("Mensaje publicado")
 	}
 	return nil
 }
@@ -146,9 +149,12 @@ func (l *Broker) Leer(nombre string, client *rpc.Client){
 		
 		//tener un seguna canal / cola / vector dinamico  y antes de leer de el canal l.colas[nombre].mensajes comporbar si esta vacia el canal / cola / vector dinamico prioritario
 		// hacer que sea atómico entre las go rutinas
+		var mensaje string
+		mensaje = <- l.mensajeRechazado
+		if(mensaje == "ok"){
+			mensaje = <- l.colas[nombre].mensajes
+		}
 		
-
-		mensaje := <- l.colas[nombre].mensajes
 		// fmt.Println("Consumiendo")
 		// (callback)(mensaje)
 		args := &ArgsCallback{Mensaje: mensaje}
@@ -157,14 +163,14 @@ func (l *Broker) Leer(nombre string, client *rpc.Client){
 		if err != nil {
 			fmt.Println("Error al llamar a la función callback:", err)
 			// Decide qué hacer en caso de error.
-
+			l.mensajeRechazado <- mensaje
 			client.Close()
 			break;
 		}else{
+			l.mensajeRechazado <- "ok"
 			l.mensajeConsumido <- true
 		}
 		time.Sleep(1000*time.Millisecond)
-		
 	}
 }
 
@@ -184,7 +190,6 @@ func (l *Broker) Consumir(args *ArgsConsumir, reply *Reply) error{
 		if err != nil {
 			fmt.Println("Dialing:", err)
 		}
-
 		go l.Leer(args.Nombre, client)
 		return nil
 
