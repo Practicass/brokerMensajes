@@ -24,6 +24,8 @@ type Broker struct {
     // consumidores es un mapa que asocia nombres de cola con listas de consumidores.
     // Cada consumidor está representado por una cadena (string).
     consumidores map[string][]string
+
+	mensajeConsumido chan bool
 }
 
 
@@ -68,6 +70,7 @@ func NuevoBroker() *Broker {
 	return &Broker{
 		colas : make(map[string]Cola),
 		consumidores : make(map[string][]string),
+		mensajeConsumido: make(chan bool),
 
 	}
 	
@@ -96,6 +99,19 @@ func (l *Broker) Declarar_cola(args *ArgsDeclararCola, reply *Reply) error{
 	
 }
 
+func (l *Broker) mensajeCaducado( nombre string){
+	timer := time.NewTimer(100 * time.Second)
+    
+	select {	
+	case <-timer.C:
+		fmt.Println("Mensaje caducado")
+		<- l.colas[nombre].mensajes
+	case <-l.mensajeConsumido:
+		fmt.Println("Mensaje consumido")
+	}
+
+
+}
 
 // Publicar es un método RPC que publica un mensaje en una cola específica.
 // Toma argumentos `ArgsPublicar` que contienen el nombre de la cola y el mensaje a publicar, y una respuesta `Reply`.
@@ -110,6 +126,10 @@ func (l *Broker) Publicar(args *ArgsPublicar, reply *Reply) error{
 	if _, ok := l.colas[args.Nombre]; ok {
 		fmt.Println("Publicando", args.Nombre," ", args.Mensaje)
 		l.colas[args.Nombre].mensajes <- args.Mensaje
+		fmt.Println("Mensaje publicado")
+
+		go l.mensajeCaducado(args.Nombre)
+		fmt.Println("Mensaje publicado")
 	}
 	return nil
 }
@@ -133,6 +153,9 @@ func (l *Broker) Leer(nombre string, client *rpc.Client){
 		if err != nil {
 			fmt.Println("Error al llamar a la función callback:", err)
 			// Decide qué hacer en caso de error.
+			client.Close()
+		}else{
+			l.mensajeConsumido <- true
 		}
 		time.Sleep(1000*time.Millisecond)
 		
