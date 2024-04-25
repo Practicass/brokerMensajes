@@ -144,6 +144,10 @@ func (l *Broker) Publicar(args *ArgsPublicar, reply *Reply) error{
 func (l *Broker) Leer(nombre string, client *rpc.Client){
 	for {
 		
+		//tener un seguna canal / cola / vector dinamico  y antes de leer de el canal l.colas[nombre].mensajes comporbar si esta vacia el canal / cola / vector dinamico prioritario
+		// hacer que sea atómico entre las go rutinas
+		
+
 		mensaje := <- l.colas[nombre].mensajes
 		// fmt.Println("Consumiendo")
 		// (callback)(mensaje)
@@ -153,7 +157,9 @@ func (l *Broker) Leer(nombre string, client *rpc.Client){
 		if err != nil {
 			fmt.Println("Error al llamar a la función callback:", err)
 			// Decide qué hacer en caso de error.
+
 			client.Close()
+			break;
 		}else{
 			l.mensajeConsumido <- true
 		}

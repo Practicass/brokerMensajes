@@ -134,6 +134,6 @@ func main(){
         }
 		
 
-		productor.Publicar(input1,input2)
+		go productor.Publicar(input1,input2)
 	}
 }

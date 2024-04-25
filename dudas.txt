@@ -1,0 +1,2 @@
+¿el programa consumidor una vez que se ha suscrito a una cola que hace?? se queda esperando sin hacer nada o podemos hacer como aqui que se puede suscribir a otra?
+¿hace falta hacer round robin si hemos implementado fair dispatch?
