@@ -76,7 +76,6 @@ func (p *Productor) Publicar(nombreCola string, mensaje string){
     }
 	args2 := &ArgsPublicar{Nombre: nombreCola, Mensaje: mensaje}
     err = p.broker.Call("Broker.Publicar", args2, &reply)
-	fmt.Println("terminar")
 	if err != nil {
         fmt.Println("Error al llamar al método Multiply:", err)
         return

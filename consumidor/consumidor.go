@@ -34,6 +34,7 @@ type ArgsCallback struct{
 
 func (c *Consumidor) Callback(args *ArgsCallback, reply *Reply) error{
 	fmt.Println("Consumidor " + c.nombre + " " + args.Mensaje)
+	fmt.Println("Ingresa el nombre de la cola: ")
 	return nil
 }
 
@@ -107,7 +108,7 @@ func main(){
 
 	var input string;
 	for {
-        fmt.Print("Ingresa el nombre de la cola: ")
+        fmt.Println("Ingresa el nombre de la cola: ")
         // Leer una línea de entrada
         input, err = reader.ReadString('\n')
         if err != nil {
