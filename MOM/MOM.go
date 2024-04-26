@@ -246,6 +246,53 @@ func (l *Broker) Consumir(args *ArgsConsumir, reply *Reply) error{
 }
 
 
+func (l * Broker) EjecutarBroker( ip string){
+	
+	rpc.Register(l)
+
+	ln, err := net.Listen("tcp", ip)
+	if err != nil {
+		fmt.Println("Error al iniciar el servidor:", err)
+		return
+	}
+	defer ln.Close()
+
+	fmt.Println("Servidor escuchando en puerto 8080")
+
+	for{
+		// Aceptar conexiones entrantes
+		rpc.Accept(ln)
+		if err != nil {
+			fmt.Println("Error al aceptar la conexión:", err)
+			return
+		}
+		fmt.Println("Cliente conectado")
+	}
+
+}
+
+
+
+func (l *Broker) ListarColas(){
+	fmt.Println("Colas:")
+	if len(l.colas) == 0 {
+		fmt.Println("No hay colas disponibles")
+	} else {
+		for key := range l.colas {
+			fmt.Println(key)
+		}
+	}
+	
+}
+
+
+func (l *Broker) BorrarCola(nombre string){
+	if _, ok := l.colas[nombre]; ok {
+		delete(l.colas, nombre)
+	}
+}
+
+
 // main es la función principal que inicia el servidor RPC y espera conexiones.
 // Crea una instancia de `Broker`, la registra en RPC y comienza a escuchar en el puerto 8080.
 func main(){
@@ -260,25 +307,30 @@ func main(){
     }
 
 	l := NuevoBroker()
-	rpc.Register(l)
+	go l.EjecutarBroker(args[1])
 
-	ln, err := net.Listen("tcp", args[1])
-    if err != nil {
-        fmt.Println("Error al iniciar el servidor:", err)
-        return
-    }
-    defer ln.Close()
+	
+	reader := bufio.NewReader(os.Stdin)
 
-    fmt.Println("Servidor escuchando en otro  puerto")
+	var input string;
+	for {
+        fmt.Println("Ingresa una de las operacions ( listar colas / borrar cola): ")
+        // Leer una línea de entrada
+        input, err = reader.ReadString('\n')
+        if err != nil {
+            fmt.Println("Error al leer la entrada:", err)
+			continue
+        }
+		if(strings.Contains(input, "listar colas")){
+			l.ListarColas()
+		
+		}else if(strings.Contains(input, "borrar cola")){
+			fmt.Println("Ingresa el nombre de la cola a borrar: ")
+			input, err = reader.ReadString('\n')
 
-	for{
-		// Aceptar conexiones entrantes
-		rpc.Accept(ln)
-		if err != nil {
-			fmt.Println("Error al aceptar la conexión:", err)
-			return
 		}
-		fmt.Println("Cliente conectado")
+
+
 	}
 
 }
