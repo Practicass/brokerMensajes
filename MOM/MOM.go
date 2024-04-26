@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"net"
 	"net/rpc"
@@ -288,6 +289,7 @@ func (l *Broker) ListarColas(){
 
 func (l *Broker) BorrarCola(nombre string){
 	if _, ok := l.colas[nombre]; ok {
+		fmt.Println("Borrando cola", nombre)
 		delete(l.colas, nombre)
 	}
 }
@@ -311,12 +313,13 @@ func main(){
 
 	
 	reader := bufio.NewReader(os.Stdin)
+	
 
-	var input string;
+
 	for {
         fmt.Println("Ingresa una de las operacions ( listar colas / borrar cola): ")
         // Leer una línea de entrada
-        input, err = reader.ReadString('\n')
+        input, err := reader.ReadString('\n')
         if err != nil {
             fmt.Println("Error al leer la entrada:", err)
 			continue
@@ -327,7 +330,14 @@ func main(){
 		}else if(strings.Contains(input, "borrar cola")){
 			fmt.Println("Ingresa el nombre de la cola a borrar: ")
 			input, err = reader.ReadString('\n')
+			if err != nil {
+				fmt.Println("Error al leer la entrada:", err)
+				continue
+			}
+			l.BorrarCola(input)
 
+		}else{
+			fmt.Println("Operación no válida")
 		}
 
 
