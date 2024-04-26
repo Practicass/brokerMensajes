@@ -263,10 +263,6 @@ func (l * Broker) EjecutarBroker( ip string){
 	for{
 		// Aceptar conexiones entrantes
 		rpc.Accept(ln)
-		if err != nil {
-			fmt.Println("Error al aceptar la conexión:", err)
-			return
-		}
 		fmt.Println("Cliente conectado")
 	}
 
