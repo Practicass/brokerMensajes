@@ -7,7 +7,6 @@ import (
 	"net/rpc"
 	"os"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -15,7 +14,7 @@ import (
 // Tiene un canal de mensajes (`mensajes`) y un mutex (`mux`) para sincronización.
 type Cola struct {
 	mensajes chan string
-	mux *sync.Mutex
+	durability bool
 }
 
 //Estructura que representa el broker.
@@ -39,6 +38,7 @@ type Broker struct {
 // Contiene el nombre de la cola que se va a declarar.
 type ArgsDeclararCola struct{
 	Nombre string
+	Durability bool
 }
 
 // ArgsPublicar representa los argumentos para publicar un mensaje en una cola.
@@ -46,7 +46,6 @@ type ArgsDeclararCola struct{
 type ArgsPublicar struct{
 	Nombre string
 	Mensaje string
-	Durability bool
 }
 
 // ArgsConsumir representa los argumentos para consumir mensajes de una cola.
@@ -99,7 +98,7 @@ func (l *Broker) Declarar_cola(args *ArgsDeclararCola, reply *Reply) error{
 		l.colas = make(map[string]Cola)
 	}
 	if _, ok := l.colas[args.Nombre]; !ok {
-		l.colas[args.Nombre] = Cola{make(chan string, 10), &sync.Mutex{}}
+		l.colas[args.Nombre] = Cola{make(chan string, 100), args.Durability}
 		l.consumidores[args.Nombre] = []string{}
 		fmt.Println("Cola declarada")
 		l.mensajeRechazado <- "ok"
@@ -110,7 +109,7 @@ func (l *Broker) Declarar_cola(args *ArgsDeclararCola, reply *Reply) error{
 }
 
 func (l *Broker) mensajeCaducado( nombre string){
-	timer := time.NewTimer(5000 * time.Second)
+	timer := time.NewTimer(300 * time.Second)
     
 	select {	
 	case <-timer.C:
@@ -136,7 +135,7 @@ func (l *Broker) Publicar(args *ArgsPublicar, reply *Reply) error{
 	if _, ok := l.colas[args.Nombre]; ok {
 		fmt.Println("Publicando", args.Nombre," ", args.Mensaje)
 		l.colas[args.Nombre].mensajes <- args.Mensaje
-		if(args.Durability){
+		if(l.colas[args.Nombre].durability){
             // Abre el archivo con el nombre args.Nombre.txtx en modo append.
             file, err := os.OpenFile(args.Nombre+".txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
             if err != nil {
@@ -190,7 +189,6 @@ func eliminarPrimeraLinea(nombreArchivo string) error {
 		
 		return nil
 	}
-
 }
 
 func (l *Broker) leerArchivo(nombreArchivo string) error{
@@ -199,13 +197,12 @@ func (l *Broker) leerArchivo(nombreArchivo string) error{
     if err != nil {
         return err
     }
-
     // Convierte las líneas a una slice de strings.
     todasLasLineas := strings.Split(string(lineas), "\n")
-	l.Declarar_cola(&ArgsDeclararCola{Nombre: nombreArchivo}, &Reply{Mensaje: ""})
+	l.Declarar_cola(&ArgsDeclararCola{Nombre: nombreArchivo, Durability: true}, &Reply{Mensaje: ""})
 	for i := 0; i < len(todasLasLineas); i++{
 		if(todasLasLineas[i] != ""){
-			l.Publicar(&ArgsPublicar{Nombre: nombreArchivo, Mensaje: todasLasLineas[i], Durability: true}, &Reply{Mensaje: ""})
+			l.Publicar(&ArgsPublicar{Nombre: nombreArchivo, Mensaje: todasLasLineas[i]}, &Reply{Mensaje: ""})
 		}
 	}
     return nil
@@ -228,12 +225,10 @@ func (l *Broker) Leer(nombre string, client *rpc.Client){
 		if(mensaje == "ok"){
 			mensaje = <- l.colas[nombre].mensajes
 		}
-		
-		// fmt.Println("Consumiendo")
-		// (callback)(mensaje)
 		args := &ArgsCallback{Mensaje: mensaje}
 		var reply Reply
 		err := client.Call("Consumidor.Callback", args, &reply)
+		fmt.Println("Mensaje error:", err)
 		if err != nil {
 			fmt.Println("Error al llamar a la función callback:", err)
 			// Decide qué hacer en caso de error.
@@ -241,11 +236,16 @@ func (l *Broker) Leer(nombre string, client *rpc.Client){
 			client.Close()
 			break;
 		}else{
+			fmt.Println("Else ",l.colas[nombre].durability)
+			if(l.colas[nombre].durability){
+				fmt.Println("Eliminando mensaje")
+				eliminarPrimeraLinea(nombre+".txt")
+			}
 			l.mensajeRechazado <- "ok"
 			l.mensajeConsumido <- true
-			eliminarPrimeraLinea(nombre+".txt")
+			
 		}
-		time.Sleep(300*time.Second)
+		time.Sleep(300*time.Millisecond)
 	}
 }
 
@@ -274,30 +274,21 @@ func (l *Broker) Consumir(args *ArgsConsumir, reply *Reply) error{
 	}
 }
 
-
 func (l * Broker) EjecutarBroker( ip string){
-	
 	rpc.Register(l)
-
 	ln, err := net.Listen("tcp", ip)
 	if err != nil {
 		fmt.Println("Error al iniciar el servidor:", err)
 		return
 	}
 	defer ln.Close()
-
 	fmt.Println("Servidor escuchando en ", ip)
-
 	for{
 		// Aceptar conexiones entrantes
 		rpc.Accept(ln)
 		fmt.Println("Cliente conectado")
 	}
-
 }
-
-
-
 func (l *Broker) ListarColas(){
 	fmt.Println("Colas:")
 	if len(l.colas) == 0 {
@@ -309,28 +300,23 @@ func (l *Broker) ListarColas(){
 	}
 	
 }
-
-
 func (l *Broker) BorrarCola(nombre string){
 	if _, ok := l.colas[nombre]; ok {
 		fmt.Println("Borrando cola", nombre)
 		delete(l.colas, nombre)
 	}
 }
-
 func (l *Broker) RescatarColasAnteriores(){
     archivos, err := os.ReadDir(".")
     if err != nil {
 		fmt.Println("Error al rescatar colas antiguas:", err)
         return
     }
-
     for index, archivo := range archivos {
 		if(index != 0){
 			fmt.Println(archivo.Name()+";")
 			name := strings.Split(archivo.Name(), ".")[0]			 
 			l.leerArchivo(name)
-
 		}
     }
 }
@@ -339,25 +325,17 @@ func (l *Broker) RescatarColasAnteriores(){
 // main es la función principal que inicia el servidor RPC y espera conexiones.
 // Crea una instancia de `Broker`, la registra en RPC y comienza a escuchar en el puerto 8080.
 func main(){
-
 	args := os.Args
-
 	//Verifica número correcto de argumentos
 	if len(args) < 2 {
         fmt.Println("No se ha proporcionado ningún argumento. Ejemplo de uso:")
         fmt.Println("  go run MOM direccionIP:puerto")
         return
     }
-
 	l := NuevoBroker()
 	go l.EjecutarBroker(args[1])
-
 	l.RescatarColasAnteriores()
-	
 	reader := bufio.NewReader(os.Stdin)
-	
-
-
 	for {
         fmt.Println("Ingresa una de las operacions ( listar colas / borrar cola): ")
         // Leer una línea de entrada
@@ -368,7 +346,6 @@ func main(){
         }
 		if(strings.Contains(input, "listar colas")){
 			l.ListarColas()
-		
 		}else if(strings.Contains(input, "borrar cola")){
 			fmt.Println("Ingresa el nombre de la cola a borrar: ")
 			input, err = reader.ReadString('\n')
@@ -377,14 +354,10 @@ func main(){
 				continue
 			}
 			l.BorrarCola(input)
-
 		}else{
 			fmt.Println("Operación no válida")
 		}
-
-
 	}
-
 }
 
 

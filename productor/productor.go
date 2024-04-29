@@ -18,8 +18,6 @@ type Productor struct{
 	broker *rpc.Client
 }
 
-
-
 // func (p *Productor) Productor(nombre string, broker *rpc.Client){
 // 	p.nombre = nombre
 // 	p.broker = broker
@@ -45,21 +43,19 @@ func NuevoProductor(nombre string, broker *rpc.Client) *Productor{
 // ArgsDeclararCola representa los argumentos necesarios para declarar una nueva cola en el Broker de mensajes.
 type ArgsDeclararCola struct{
 	Nombre string
+	Durability bool
 }
 
 // ArgsPublicar representa los argumentos necesarios para publicar un mensaje en una cola del Broker de mensajes.
 type ArgsPublicar struct{
 	Nombre string
 	Mensaje string
-	Durability bool
 }
-
 
 // Reply representa la respuesta recibida del Broker de mensajes.
 type Reply struct{
 	Mensaje string
 }
-
 
 // Publicar publica un mensaje en la cola especificada en el Broker mediante RPC.
 //
@@ -67,17 +63,14 @@ type Reply struct{
 // - nombreCola: El nombre de la cola en la que se desea publicar el mensaje.
 // - mensaje: El mensaje que se desea publicar en la cola.
 func (p *Productor) Publicar(nombreCola string, mensaje string, durability bool){
-	// fmt.Println("Escribiendo")
-	// p.broker.Declarar_cola(nombreCola)
-	// p.broker.Publicar(nombreCola, mensaje)
     var reply Reply
-	args := &ArgsDeclararCola{Nombre: nombreCola}
+	args := &ArgsDeclararCola{Nombre: nombreCola, Durability: durability}
     err := p.broker.Call("Broker.Declarar_cola", args, &reply)
 	if err != nil {
         fmt.Println("Error al llamar al método Multiply:", err)
         return
     }
-	args2 := &ArgsPublicar{Nombre: nombreCola, Mensaje: mensaje, Durability: durability}
+	args2 := &ArgsPublicar{Nombre: nombreCola, Mensaje: mensaje}
     err = p.broker.Call("Broker.Publicar", args2, &reply)
 	if err != nil {
         fmt.Println("Error al llamar al método Multiply:", err)
@@ -98,14 +91,12 @@ func main(){
 
 	// Obtener los argumentos de la línea de comandos
 	args := os.Args
-
 	//Verifica número correcto de argumentos
 	if len(args) < 3 {
         fmt.Println("No se ha proporcionado ningún argumento. Ejemplo de uso:")
         fmt.Println("  go run productor nombreProductor direccionIP:puerto")
         return
     }
-
 	//Realizar conexión
 	broker, err := rpc.Dial("tcp", args[2])
     if err != nil {
@@ -113,12 +104,8 @@ func main(){
 		return 
     }
     defer broker.Close()
-
-	
 	reader := bufio.NewReader(os.Stdin)
-
 	productor := NuevoProductor(args[1], broker)
-
 	//Leer de entrada estandar
 	for {
         fmt.Print("Ingresa el nombre de la cola: ")
@@ -135,20 +122,18 @@ func main(){
             fmt.Println("Error al leer la entrada:", err)
             continue
         }
-		fmt.Print("¿Desea que el mensaje sea durable? (true/false):")
+		fmt.Print("Si es el primer mensaje de la cola, ¿desea que la cola sea durable? (true/false):")
         // Leer una línea de entrada
         input3, err := reader.ReadString('\n')
         if err != nil {
             fmt.Println("Error al leer la entrada:", err)
             continue
         }
-		
 		durable, err := strconv.ParseBool(strings.TrimSpace(input3))
 		if err != nil {
 			fmt.Println("Error al convertir el valor a booleano:", err)
 			continue
 		}
-
 		go productor.Publicar(input1,input2,durable)
 	}
 }

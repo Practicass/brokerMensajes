@@ -38,9 +38,7 @@ func (c *Consumidor) Callback(args *ArgsCallback, reply *Reply) error{
 	return nil
 }
 
-// func (c *Consumidor) CrearCola(nombreCola string){
-// 	c.broker.Declarar_cola(nombreCola)
-// }
+
 
 type ArgsDeclararCola struct{
 	Nombre string
@@ -55,9 +53,6 @@ type Reply struct{
 }
 
 func (c *Consumidor) Leer (nombreCola string, ip string) {
-	// fmt.Println("Consumidor " + c.nombre + " leyendo")
-	// c.broker.Declarar_cola(nombreCola)
-	// c.broker.Consumir(nombreCola, c.Callback)
 	var reply Reply
 	args := &ArgsDeclararCola{Nombre: nombreCola}
     err := c.broker.Call("Broker.Declarar_cola", args, &reply)
