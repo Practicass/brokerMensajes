@@ -170,7 +170,7 @@ func eliminarPrimeraLinea(nombreArchivo string) error {
 
     // Elimina la primera línea.
     lineasRestantes := todasLasLineas[1:]
-
+	
     // Convierte las líneas restantes a una cadena.
     nuevoContenido := strings.Join(lineasRestantes, "\n")
 
@@ -180,6 +180,30 @@ func eliminarPrimeraLinea(nombreArchivo string) error {
         return err
     }
 
+    return nil
+}
+
+func (l *Broker) leerArchivo(nombreArchivo string) error{
+	// Lee todas las líneas del archivo.
+    lineas, err := os.ReadFile(nombreArchivo+".txt")
+    if err != nil {
+        return err
+    }
+
+    // Convierte las líneas a una slice de strings.
+    todasLasLineas := strings.Split(string(lineas), "\n")
+	fmt.Println("Leyendo archivo"+nombreArchivo)
+	l.Declarar_cola(&ArgsDeclararCola{Nombre: nombreArchivo}, &Reply{Mensaje: ""})
+	fmt.Println("Declarar cola "+nombreArchivo)
+	for i := 0; i < len(todasLasLineas); i++{
+		if(todasLasLineas[i] != ""){
+			l.Publicar(&ArgsPublicar{Nombre: nombreArchivo, Mensaje: todasLasLineas[i], Durability: true}, &Reply{Mensaje: ""})
+		}
+	}
+	err = os.Remove(nombreArchivo)
+    if err != nil {
+        return err
+    }
     return nil
 }
 
@@ -290,6 +314,23 @@ func (l *Broker) BorrarCola(nombre string){
 	}
 }
 
+func (l *Broker) RescatarColasAnteriores(){
+    archivos, err := os.ReadDir(".")
+    if err != nil {
+		fmt.Println("Error al rescatar colas antiguas:", err)
+        return
+    }
+
+    for index, archivo := range archivos {
+		if(index != 0){
+			fmt.Println(archivo.Name()+";")
+			name := strings.Split(archivo.Name(), ".")[0]			 
+			l.leerArchivo(name)
+
+		}
+    }
+}
+
 
 // main es la función principal que inicia el servidor RPC y espera conexiones.
 // Crea una instancia de `Broker`, la registra en RPC y comienza a escuchar en el puerto 8080.
@@ -307,6 +348,7 @@ func main(){
 	l := NuevoBroker()
 	go l.EjecutarBroker(args[1])
 
+	l.RescatarColasAnteriores()
 	
 	reader := bufio.NewReader(os.Stdin)
 	
