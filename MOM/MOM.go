@@ -170,17 +170,27 @@ func eliminarPrimeraLinea(nombreArchivo string) error {
 
     // Elimina la primera línea.
     lineasRestantes := todasLasLineas[1:]
-	
-    // Convierte las líneas restantes a una cadena.
-    nuevoContenido := strings.Join(lineasRestantes, "\n")
+	if(len(lineasRestantes) == 1 ){
+		fmt.Println("Borrando archivo")
+		err = os.Remove(nombreArchivo)
+		if err != nil {
+			fmt.Println("Borrando archivo"+err.Error())
+			return err
+		}
+		return nil
+	}else{
+		// Convierte las líneas restantes a una cadena.
+		nuevoContenido := strings.Join(lineasRestantes, "\n")
 
-    // Escribe las líneas restantes de nuevo en el archivo.
-    err = os.WriteFile(nombreArchivo, []byte(nuevoContenido), 0644)
-    if err != nil {
-        return err
-    }
+		// Escribe las líneas restantes de nuevo en el archivo.
+		err = os.WriteFile(nombreArchivo, []byte(nuevoContenido), 0644)
+		if err != nil {
+			return err
+		}
+		
+		return nil
+	}
 
-    return nil
 }
 
 func (l *Broker) leerArchivo(nombreArchivo string) error{
@@ -200,7 +210,7 @@ func (l *Broker) leerArchivo(nombreArchivo string) error{
 			l.Publicar(&ArgsPublicar{Nombre: nombreArchivo, Mensaje: todasLasLineas[i], Durability: true}, &Reply{Mensaje: ""})
 		}
 	}
-	err = os.Remove(nombreArchivo)
+	err = os.Remove(nombreArchivo+".txt")
     if err != nil {
         return err
     }
