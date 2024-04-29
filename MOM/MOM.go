@@ -22,15 +22,11 @@ type Broker struct {
     // colas es un mapa que asocia nombres de cola con canales de tipo string.
     // Cada canal representa una cola donde se pueden enviar y recibir mensajes de tipo string.
     colas map[string]Cola
-
     // consumidores es un mapa que asocia nombres de cola con listas de consumidores.
     // Cada consumidor está representado por una cadena (string).
     consumidores map[string][]string
-
 	mensajeConsumido chan bool
-
 	mensajeRechazado chan string
-
 }
 
 
@@ -80,7 +76,6 @@ func NuevoBroker() *Broker {
 		mensajeConsumido: make(chan bool),
 		mensajeRechazado: make(chan string, 1),
 	}
-	
 }
 
 
@@ -105,12 +100,24 @@ func (l *Broker) Declarar_cola(args *ArgsDeclararCola, reply *Reply) error{
 
 	}
 	return nil
-	
 }
 
+// mensajeCaducado es una función que maneja la expiración de un mensaje en una cola específica.
+// Configura un temporizador de caducidad para los mensajes en la cola y elimina el mensaje
+// si no se consume dentro del período especificado.
+//
+// Parámetros:
+// - nombre: El nombre de la cola en la que se está manejando la caducidad de los mensajes.
+//
+// Comportamiento:
+// - Configura un temporizador (`timer`) con una duración de 300 segundos (5 minutos).
+// - Utiliza una instrucción `select` para esperar a que se produzca una de dos condiciones:
+//     - El temporizador expira (`<-timer.C`), lo que indica que el mensaje ha caducado.
+//     - Un mensaje ha sido consumido (`<-l.mensajeConsumido`), lo que indica que el mensaje ha sido procesado.
+// - Si el temporizador expira primero, imprime un mensaje indicando que el mensaje ha caducado y elimina el mensaje de la cola.
+// - Si se consume el mensaje antes de que el temporizador expire, imprime un mensaje indicando que el mensaje ha sido consumido.
 func (l *Broker) mensajeCaducado( nombre string){
 	timer := time.NewTimer(300 * time.Second)
-    
 	select {	
 	case <-timer.C:
 		fmt.Println("Mensaje caducado")
@@ -118,8 +125,6 @@ func (l *Broker) mensajeCaducado( nombre string){
 	case <-l.mensajeConsumido:
 		fmt.Println("Mensaje consumido")
 	}
-
-
 }
 
 // Publicar es un método RPC que publica un mensaje en una cola específica.
@@ -143,7 +148,6 @@ func (l *Broker) Publicar(args *ArgsPublicar, reply *Reply) error{
                 return err
             }
             defer file.Close()
-
             // Escribe args.Mensaje en el archivo.
             if _, err := file.WriteString(args.Mensaje); err != nil {
                 fmt.Println("Error al escribir en el archivo:", err)
@@ -156,17 +160,30 @@ func (l *Broker) Publicar(args *ArgsPublicar, reply *Reply) error{
 	return nil
 }
 
-
+// eliminarPrimeraLinea elimina la primera línea de un archivo especificado por `nombreArchivo`.
+//
+// Parámetros:
+// - nombreArchivo: El nombre del archivo del que se desea eliminar la primera línea.
+//
+// Retorna:
+// - Un valor de tipo `error` que es `nil` si la operación es exitosa, o un error si ocurre un problema al leer o escribir en el archivo.
+//
+// Comportamiento:
+// - Lee todas las líneas del archivo especificado por `nombreArchivo` utilizando `os.ReadFile`.
+// - Convierte el contenido leído en una slice de strings utilizando `strings.Split`.
+// - Elimina la primera línea de la slice de strings.
+// - Si solo queda una línea después de eliminar la primera línea, elimina el archivo completo utilizando `os.Remove`.
+// - Si quedan más líneas, las convierte de nuevo en una cadena utilizando `strings.Join`.
+// - Escribe las líneas restantes de nuevo en el archivo utilizando `os.WriteFile` con permisos de escritura (0644).
+// - Retorna un error si ocurre algún problema al leer, escribir o eliminar el archivo.
 func eliminarPrimeraLinea(nombreArchivo string) error {
     // Lee todas las líneas del archivo.
     lineas, err := os.ReadFile(nombreArchivo)
     if err != nil {
         return err
     }
-
     // Convierte las líneas a una slice de strings.
     todasLasLineas := strings.Split(string(lineas), "\n")
-
     // Elimina la primera línea.
     lineasRestantes := todasLasLineas[1:]
 	if(len(lineasRestantes) == 1 ){
@@ -186,11 +203,26 @@ func eliminarPrimeraLinea(nombreArchivo string) error {
 		if err != nil {
 			return err
 		}
-		
 		return nil
 	}
 }
 
+
+// leerArchivo es un método del tipo `Broker` que lee todas las líneas de un archivo con el nombre especificado,
+// declara una cola con el nombre del archivo, y publica cada línea no vacía como un mensaje en esa cola.
+//
+// Parámetros:
+// - nombreArchivo: El nombre del archivo del que se van a leer las líneas (sin la extensión .txt).
+//
+// Retorna:
+// - Un valor de tipo `error` que es `nil` si la operación es exitosa, o un error si ocurre un problema al leer el archivo o al publicar mensajes.
+//
+// Comportamiento:
+// - Lee todas las líneas del archivo con el nombre especificado y extensión `.txt` utilizando `os.ReadFile`.
+// - Convierte el contenido leído en una slice de strings utilizando `strings.Split`.
+// - Declara una cola con el nombre del archivo, especificando que la cola es duradera (opcional).
+// - Itera sobre las líneas de la slice de strings y publica cada línea no vacía como un mensaje en la cola declarada.
+// - Retorna un error si ocurre algún problema al leer el archivo o al publicar mensajes.
 func (l *Broker) leerArchivo(nombreArchivo string) error{
 	// Lee todas las líneas del archivo.
     lineas, err := os.ReadFile(nombreArchivo+".txt")
@@ -217,9 +249,6 @@ func (l *Broker) leerArchivo(nombreArchivo string) error{
 // - callback: Una función de callback que se ejecutará con cada mensaje consumido.
 func (l *Broker) Leer(nombre string, client *rpc.Client){
 	for {
-		
-		//tener un seguna canal / cola / vector dinamico  y antes de leer de el canal l.colas[nombre].mensajes comporbar si esta vacia el canal / cola / vector dinamico prioritario
-		// hacer que sea atómico entre las go rutinas
 		var mensaje string
 		mensaje = <- l.mensajeRechazado
 		if(mensaje == "ok"){
@@ -243,7 +272,6 @@ func (l *Broker) Leer(nombre string, client *rpc.Client){
 			}
 			l.mensajeRechazado <- "ok"
 			l.mensajeConsumido <- true
-			
 		}
 		time.Sleep(300*time.Millisecond)
 	}
@@ -274,6 +302,18 @@ func (l *Broker) Consumir(args *ArgsConsumir, reply *Reply) error{
 	}
 }
 
+// EjecutarBroker inicia el servidor RPC del broker y escucha conexiones entrantes en la dirección IP especificada.
+//
+// Parámetros:
+// - ip: La dirección IP en la que el servidor debe escuchar las conexiones entrantes.
+//
+// Comportamiento:
+// - Registra el broker (instancia de `Broker`) como un servicio RPC utilizando `rpc.Register`.
+// - Inicia un listener TCP en la dirección IP especificada utilizando `net.Listen`.
+// - Verifica si hay un error al iniciar el servidor y, de ser así, imprime el error y retorna.
+// - Usa `defer` para asegurarse de cerrar el listener cuando la función termine.
+// - Imprime un mensaje indicando que el servidor está escuchando en la dirección IP especificada.
+// - En un bucle infinito, acepta conexiones entrantes y maneja los clientes conectados utilizando `rpc.Accept`.
 func (l * Broker) EjecutarBroker( ip string){
 	rpc.Register(l)
 	ln, err := net.Listen("tcp", ip)
@@ -289,6 +329,13 @@ func (l * Broker) EjecutarBroker( ip string){
 		fmt.Println("Cliente conectado")
 	}
 }
+
+// ListarColas muestra en la consola una lista de todas las colas disponibles.
+//
+// Comportamiento:
+// - Imprime un encabezado ("Colas:").
+// - Verifica si no hay colas disponibles y, de ser así, imprime un mensaje indicando que no hay colas.
+// - Si hay colas disponibles, itera sobre las claves (nombres) de las colas y las imprime en la consola.
 func (l *Broker) ListarColas(){
 	fmt.Println("Colas:")
 	if len(l.colas) == 0 {
@@ -297,15 +344,32 @@ func (l *Broker) ListarColas(){
 		for key := range l.colas {
 			fmt.Println(key)
 		}
-	}
-	
+	}	
 }
+
+
+// BorrarCola elimina la cola con el nombre especificado del broker.
+//
+// Parámetros:
+// - nombre: El nombre de la cola que se desea eliminar.
+//
+// Comportamiento:
+// - Verifica si la cola con el nombre especificado existe en el broker.
+// - Si la cola existe, imprime un mensaje indicando que se va a eliminar la cola y la elimina utilizando `delete`.
 func (l *Broker) BorrarCola(nombre string){
 	if _, ok := l.colas[nombre]; ok {
 		fmt.Println("Borrando cola", nombre)
 		delete(l.colas, nombre)
 	}
 }
+
+// RescatarColasAnteriores lee los archivos en el directorio actual y carga colas a partir de ellos.
+//
+// Comportamiento:
+// - Lee los archivos en el directorio actual utilizando `os.ReadDir`.
+// - Verifica si hay un error al leer los archivos y, de ser así, imprime el error y retorna.
+// - Itera sobre los archivos en el directorio, omitiendo el primer archivo (índice 0).
+// - Por cada archivo, imprime su nombre, extrae el nombre de la cola (sin la extensión) y llama a `leerArchivo` para cargar las colas.
 func (l *Broker) RescatarColasAnteriores(){
     archivos, err := os.ReadDir(".")
     if err != nil {

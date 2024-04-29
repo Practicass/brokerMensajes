@@ -18,11 +18,6 @@ type Productor struct{
 	broker *rpc.Client
 }
 
-// func (p *Productor) Productor(nombre string, broker *rpc.Client){
-// 	p.nombre = nombre
-// 	p.broker = broker
-// }
-
 // NuevoProductor crea y devuelve una nueva instancia de Productor con el nombre y broker especificados.
 //
 // Parámetros:
@@ -32,12 +27,10 @@ type Productor struct{
 // Retorna:
 // - Un puntero a una nueva instancia de Productor.
 func NuevoProductor(nombre string, broker *rpc.Client) *Productor{
-
 	return &Productor{
 		nombre: nombre,
 		broker: broker,
 	}
-
 }
 
 // ArgsDeclararCola representa los argumentos necesarios para declarar una nueva cola en el Broker de mensajes.
@@ -77,8 +70,6 @@ func (p *Productor) Publicar(nombreCola string, mensaje string, durability bool)
         return
     }
 }
-
-
 
 
 // main es la función principal del programa.
