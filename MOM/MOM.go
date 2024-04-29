@@ -202,18 +202,12 @@ func (l *Broker) leerArchivo(nombreArchivo string) error{
 
     // Convierte las líneas a una slice de strings.
     todasLasLineas := strings.Split(string(lineas), "\n")
-	fmt.Println("Leyendo archivo"+nombreArchivo)
 	l.Declarar_cola(&ArgsDeclararCola{Nombre: nombreArchivo}, &Reply{Mensaje: ""})
-	fmt.Println("Declarar cola "+nombreArchivo)
 	for i := 0; i < len(todasLasLineas); i++{
 		if(todasLasLineas[i] != ""){
 			l.Publicar(&ArgsPublicar{Nombre: nombreArchivo, Mensaje: todasLasLineas[i], Durability: true}, &Reply{Mensaje: ""})
 		}
 	}
-	err = os.Remove(nombreArchivo+".txt")
-    if err != nil {
-        return err
-    }
     return nil
 }
 
