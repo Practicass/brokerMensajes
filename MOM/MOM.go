@@ -245,7 +245,7 @@ func (l *Broker) Leer(nombre string, client *rpc.Client){
 			l.mensajeConsumido <- true
 			eliminarPrimeraLinea(nombre+".txt")
 		}
-		time.Sleep(1000*time.Millisecond)
+		time.Sleep(300*time.Second)
 	}
 }
 
