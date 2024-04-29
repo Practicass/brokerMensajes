@@ -258,7 +258,7 @@ func (l * Broker) EjecutarBroker( ip string){
 	}
 	defer ln.Close()
 
-	fmt.Println("Servidor escuchando en puerto 8080")
+	fmt.Println("Servidor escuchando en ", ip)
 
 	for{
 		// Aceptar conexiones entrantes
