@@ -120,10 +120,6 @@ func main() {
 		fmt.Println("Ingresa el nombre de la cola: ")
 		// Leer una línea de entrada
 		input, err = reader.ReadString('\n')
-		if err != nil {
-			fmt.Println("Error al leer la entrada:", err)
-			continue
-		}
 		fmt.Print("Si es el primer mensaje de la cola, ¿desea que la cola sea durable? (true/false):")
 		// Leer una línea de entrada
 		input2, err := reader.ReadString('\n')
