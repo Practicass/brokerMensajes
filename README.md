@@ -42,8 +42,17 @@ To get started with the Go Message Broker, follow these steps:
 
 ## Contributing
 
-Contributions are welcome! If you would like to contribute to the project, please follow the [contribution guidelines](https://github.com/yourusername/gomessagebroker/blob/main/CONTRIBUTING.md).
+Contributions are welcome! If you would like to contribute to the project:
+1. Fork the repository if you don't have write access.
+2. Create a new branch for the changes you want to submit.
+3. Make your changes in the new branch.
+4. Commit and push your changes to the branch in your repository.
+5. Go to the original repository on GitHub.
+6. Create a pull request by clicking the "New pull request" button.
+7. Select the base branch you want to merge your changes into and the branch with your changes.
+8. Add a title and description to your pull request to explain the changes.
+9. Submit the pull request.
 
 ## License
 
-This project is licensed under the [MIT License](https://github.com/yourusername/gomessagebroker/blob/main/LICENSE). See the LICENSE file for more details.
+This project is licensed under the [MIT License](https://github.com/Practicass/brokerMensajes/blob/main/LICENSE). See the LICENSE file for more details.
